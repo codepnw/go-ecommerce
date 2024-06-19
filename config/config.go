@@ -82,7 +82,7 @@ func LoadConfig(path string) Config {
 			protocal: env["DB_PROTOCAL"],
 			username: env["DB_USERNAME"],
 			password: env["DB_PASSWORD"],
-			database: env["DB_PASSWORD"],
+			database: env["DB_DATABASE"],
 			sslMode:  env["DB_SSL_MODE"],
 			maxConnections: func() int {
 				result, err := strconv.Atoi(env["DB_MAX_CONNECTIONS"])
