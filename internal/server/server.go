@@ -32,11 +32,15 @@ func (s *server) GetServer() *server {
 }
 
 func (s *server) Start() {
+	middleware := InitMiddleware(s)
+	s.app.Use(middleware.Cors())
+	s.app.Use(middleware.Logger())
+
 	v1 := s.app.Group("v1")
-	module := InitModule(v1, s)
+	module := InitModule(v1, s, middleware)
 
 	module.MonitorModule()
 
-	log.Print("server is starting on :8080")
+	log.Printf("server is starting on :8080")
 	s.app.Listen(":8080")
 }

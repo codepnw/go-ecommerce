@@ -15,6 +15,7 @@ import (
 type Service interface {
 	Health() map[string]string
 	Close() error
+	Get() *sql.DB
 }
 
 type service struct {
@@ -56,4 +57,8 @@ func (s *service) Health() map[string]string {
 func (s *service) Close() error {
 	log.Println("Disconnected from database")
 	return s.db.Close()
+}
+
+func (s *service) Get() *sql.DB {
+	return s.db
 }
