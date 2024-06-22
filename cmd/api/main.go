@@ -24,5 +24,5 @@ func main() {
 	db.Health()
 	defer db.Close()
 
-	server.NewServer(db).Start()
+	server.NewServer(db, cfg).Start()
 }

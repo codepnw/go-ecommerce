@@ -30,7 +30,7 @@ type Logger struct {
 	Response   any    `json:"response"`
 }
 
-func InitKawaiiLogger(c *fiber.Ctx, res any, code int) *Logger {
+func InitLogger(c *fiber.Ctx, res any, code int) *Logger {
 	log := &Logger{
 		Time:       time.Now().Local().Format("2006-01-02 15:04:05"),
 		Ip:         c.IP(),
