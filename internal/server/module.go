@@ -3,11 +3,15 @@ package server
 import (
 	"github.com/codepnw/go-ecommerce/internal/middleware"
 	"github.com/codepnw/go-ecommerce/internal/monitor"
+	"github.com/codepnw/go-ecommerce/internal/users/usersHandlers"
+	"github.com/codepnw/go-ecommerce/internal/users/usersRepositories"
+	"github.com/codepnw/go-ecommerce/internal/users/usersUsecases"
 	"github.com/gofiber/fiber/v2"
 )
 
 type IModuleFactory interface {
 	MonitorModule()
+	UsersModule()
 }
 
 type moduleFactory struct {
@@ -34,4 +38,14 @@ func (m *moduleFactory) MonitorModule() {
 	handler := monitor.MonitorHandler(m.s.cfg)
 
 	m.r.Get("/", handler.HealthCheck)
+}
+
+func (m *moduleFactory) UsersModule() {
+	repo := usersRepositories.UsersRepository(m.s.db.Get())
+	usecase := usersUsecases.UsersUsecase(m.s.cfg, repo)
+	handler := usersHandlers.UsersHandler(m.s.cfg, usecase)
+
+	router := m.r.Group("/users")
+	
+	router.Post("/signup", handler.SignUpCustomer)
 }
