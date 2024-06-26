@@ -6,6 +6,7 @@ import (
 	"github.com/codepnw/go-ecommerce/config"
 	"github.com/codepnw/go-ecommerce/internal/users"
 	"github.com/codepnw/go-ecommerce/internal/users/usersRepositories"
+	"github.com/codepnw/go-ecommerce/pkg/auth"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -51,6 +52,23 @@ func (u *usersUsecase) GetPassport(req *users.UserCredential) (*users.UserPasspo
 		return nil, fmt.Errorf("password is invalid")
 	}
 
+	// sign token
+	accessToken, err := auth.NewAuth(auth.Access, u.cfg.Jwt(), &users.UserClaims{
+		Id: user.Id,
+		RoleId: user.RoleId,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("can not sign access_token")
+	}
+
+	refreshToken, err := auth.NewAuth(auth.Refresh, u.cfg.Jwt(), &users.UserClaims{
+		Id: user.Id,
+		RoleId: user.RoleId,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("can not sign refresh_token")
+	}
+
 	// set passport
 	passport := &users.UserPassport{
 		User: &users.User{
@@ -59,7 +77,14 @@ func (u *usersUsecase) GetPassport(req *users.UserCredential) (*users.UserPasspo
 			Username: user.Username,
 			RoleId: user.RoleId,
 		},
-		Token: nil,
+		Token: &users.UserToken{
+			AccessToken: accessToken.SignToken(),
+			RefreshToken: refreshToken.SignToken(),
+		},
+	}
+
+	if err = u.repo.InsertOauth(passport); err != nil {
+		return nil, err
 	}
 
 	return passport, nil

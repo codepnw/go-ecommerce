@@ -1,8 +1,10 @@
 package usersRepositories
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/codepnw/go-ecommerce/internal/users"
 	"github.com/codepnw/go-ecommerce/internal/users/usersPatterns"
@@ -11,6 +13,7 @@ import (
 type IUsersRepository interface {
 	InsertUser(req *users.UserRegisterReq, isAdmin bool) (*users.UserPassport, error)
 	FindOneUserByEmail(email string) (*users.UserCredentialCheck, error)
+	InsertOauth(req *users.UserPassport) error
 }
 
 type usersRepository struct {
@@ -65,4 +68,33 @@ func (r *usersRepository) FindOneUserByEmail(email string) (*users.UserCredentia
 	}
 
 	return user, nil
+}
+
+func (r *usersRepository) InsertOauth(req *users.UserPassport) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	query := `
+		INSERT INTO "oauth" (
+			"user_id",
+			"access_token",
+			"refresh_token"
+		)
+		VALUES ($1, $2, $3)
+		RETURNING "id";
+	`
+
+	err := r.db.QueryRowContext(
+		ctx, 
+		query, 
+		req.User.Id,
+		req.Token.AccessToken,
+		req.Token.RefreshToken,
+	).Scan(&req.Token.Id)
+
+	if err != nil {
+		return fmt.Errorf("insert oauth failed: %v", err)
+	}
+
+	return nil
 }
