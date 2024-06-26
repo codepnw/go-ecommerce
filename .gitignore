@@ -39,3 +39,4 @@ vendor
 apikey.txt
 *.txt
 /pkg/database/ecommerce.sql
+/bin
