@@ -13,6 +13,7 @@ import (
 type IUsersUsecase interface {
 	InsertCustomer(req *users.UserRegisterReq) (*users.UserPassport, error)
 	GetPassport(req *users.UserCredential) (*users.UserPassport, error)
+	RefreshPassport(req *users.UserRefreshCredential) (*users.UserPassport, error)
 }
 
 type usersUsecase struct {
@@ -84,6 +85,59 @@ func (u *usersUsecase) GetPassport(req *users.UserCredential) (*users.UserPasspo
 	}
 
 	if err = u.repo.InsertOauth(passport); err != nil {
+		return nil, err
+	}
+
+	return passport, nil
+}
+
+func (u *usersUsecase) RefreshPassport(req *users.UserRefreshCredential) (*users.UserPassport, error) {
+	claims, err := auth.ParseToken(u.cfg.Jwt(), req.RefreshToken)
+	if err != nil {
+		return nil, err
+	}
+
+	oauth, err := u.repo.FindOneOauth(req.RefreshToken)
+	if err != nil {
+		return nil, err
+	}
+
+	// find profile
+	profile, err := u.repo.GetProfile(oauth.UserId)
+	if err != nil {
+		return nil, err
+	}
+
+	newClaims := &users.UserClaims{
+		Id: profile.Id,
+		RoleId: profile.RoleId,
+	}
+
+	accessToken, err := auth.NewAuth(
+		auth.Access,
+		u.cfg.Jwt(),
+		newClaims,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken := auth.RepeatToken(
+		u.cfg.Jwt(), 
+		newClaims,
+		claims.ExpiresAt.Unix(),
+	 )
+
+	passport := &users.UserPassport{
+		User: profile,
+		Token: &users.UserToken{
+			Id: oauth.Id,
+			AccessToken: accessToken.SignToken(),
+			RefreshToken: refreshToken,
+		},
+	}
+
+	if err := u.repo.UpdateOauth(passport.Token); err != nil {
 		return nil, err
 	}
 

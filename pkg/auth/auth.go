@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -45,6 +46,50 @@ func (a *auth) SignToken() string {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, a.mapClaims)
 	ss, _ := token.SignedString(a.cfg.SecretKey())
 	return ss
+}
+
+func ParseToken(cfg config.JwtConfig, tokenString string) (*mapClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, mapClaims{}, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("signing method is invalid")
+		}
+		return cfg.SecretKey(), nil
+	})
+
+	if err != nil {
+		if errors.Is(err, jwt.ErrTokenMalformed) {
+			return nil, fmt.Errorf("token format is invalid")
+		} else if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, fmt.Errorf("token has expired")
+		} else {
+			return nil, fmt.Errorf("parse token failed: %v", err)
+		}
+	}
+
+	if claims, ok := token.Claims.(*mapClaims); ok {
+		return claims, nil
+	} else {
+		return nil, fmt.Errorf("claims type is invalid")
+	}
+}
+
+func RepeatToken(cfg config.JwtConfig, claims *users.UserClaims, exp int64) string {
+	obj := &auth{
+		cfg: cfg,
+		mapClaims: &mapClaims{
+			Claims: claims,
+			RegisteredClaims: jwt.RegisteredClaims{
+				Issuer:    "go-ecommerce",
+				Subject:   "refresh-token",
+				Audience:  []string{"customer", "admin"},
+				ExpiresAt: jwtTimeRepeatAdapter(exp),
+				NotBefore: jwt.NewNumericDate(time.Now()),
+				IssuedAt:  jwt.NewNumericDate(time.Now()),
+			},
+		},
+	}
+
+	return obj.SignToken()
 }
 
 func NewAuth(tokenType TokenType, cfg config.JwtConfig, claims *users.UserClaims) (IAuth, error) {
