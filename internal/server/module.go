@@ -51,4 +51,9 @@ func (m *moduleFactory) UsersModule() {
 	router.Post("/signin", handler.SignIn)
 	router.Post("/refresh", handler.RefreshPassport)
 	router.Post("/signout", handler.SignOut)
+
+	// Initial 1 admin in DB (insert sql)
+	// Generate admin key
+	router.Get("/secret", handler.GenerateAdminToken)
+	router.Post("/signup-admin", handler.SignUpAdmin)
 }
