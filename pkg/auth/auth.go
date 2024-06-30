@@ -8,6 +8,7 @@ import (
 
 	"github.com/codepnw/go-ecommerce/config"
 	"github.com/codepnw/go-ecommerce/internal/users"
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -63,7 +64,7 @@ func (a *authAdmin) SignToken() string {
 }
 
 func ParseToken(cfg config.JwtConfig, tokenString string) (*mapClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, mapClaims{}, func(t *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &mapClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("signing method is invalid")
 		}
@@ -72,6 +73,7 @@ func ParseToken(cfg config.JwtConfig, tokenString string) (*mapClaims, error) {
 
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenMalformed) {
+			log.Errorf("ERROR: %v", err)
 			return nil, fmt.Errorf("token format is invalid")
 		} else if errors.Is(err, jwt.ErrTokenExpired) {
 			return nil, fmt.Errorf("token has expired")
@@ -88,7 +90,7 @@ func ParseToken(cfg config.JwtConfig, tokenString string) (*mapClaims, error) {
 }
 
 func ParseTokenAdmin(cfg config.JwtConfig, tokenString string) (*mapClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, mapClaims{}, func(t *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &mapClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("signing method is invalid")
 		}
