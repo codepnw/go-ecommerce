@@ -12,7 +12,11 @@ import (
 
 type IUsersUsecase interface {
 	InsertCustomer(req *users.UserRegisterReq) (*users.UserPassport, error)
+	InsertAdmin(req *users.UserRegisterReq) (*users.UserPassport, error)
 	GetPassport(req *users.UserCredential) (*users.UserPassport, error)
+	RefreshPassport(req *users.UserRefreshCredential) (*users.UserPassport, error)
+	DeleteOauth(oauthId string) error
+	GetUserProfile(userId string) (*users.User, error)
 }
 
 type usersUsecase struct {
@@ -38,6 +42,19 @@ func (u *usersUsecase) InsertCustomer(req *users.UserRegisterReq) (*users.UserPa
 		return nil, err
 	}
 
+	return result, nil
+}
+
+func (u *usersUsecase) InsertAdmin(req *users.UserRegisterReq) (*users.UserPassport, error) {
+	if err := req.BcryptHashing(); err != nil {
+		return nil, err
+	}
+
+	// Insert user
+	result, err := u.repo.InsertUser(req, true)
+	if err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
@@ -88,4 +105,72 @@ func (u *usersUsecase) GetPassport(req *users.UserCredential) (*users.UserPasspo
 	}
 
 	return passport, nil
+}
+
+func (u *usersUsecase) RefreshPassport(req *users.UserRefreshCredential) (*users.UserPassport, error) {
+	claims, err := auth.ParseToken(u.cfg.Jwt(), req.RefreshToken)
+	if err != nil {
+		return nil, err
+	}
+
+	oauth, err := u.repo.FindOneOauth(req.RefreshToken)
+	if err != nil {
+		return nil, err
+	}
+
+	// find profile
+	profile, err := u.repo.GetProfile(oauth.UserId)
+	if err != nil {
+		return nil, err
+	}
+
+	newClaims := &users.UserClaims{
+		Id: profile.Id,
+		RoleId: profile.RoleId,
+	}
+
+	accessToken, err := auth.NewAuth(
+		auth.Access,
+		u.cfg.Jwt(),
+		newClaims,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken := auth.RepeatToken(
+		u.cfg.Jwt(), 
+		newClaims,
+		claims.ExpiresAt.Unix(),
+	 )
+
+	passport := &users.UserPassport{
+		User: profile,
+		Token: &users.UserToken{
+			Id: oauth.Id,
+			AccessToken: accessToken.SignToken(),
+			RefreshToken: refreshToken,
+		},
+	}
+
+	if err := u.repo.UpdateOauth(passport.Token); err != nil {
+		return nil, err
+	}
+
+	return passport, nil
+}
+
+func (u *usersUsecase) DeleteOauth(oauthId string) error {
+	if err := u.repo.DeleteOauth(oauthId); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (u *usersUsecase) GetUserProfile(userId string) (*users.User, error) {
+	profile, err := u.repo.GetProfile(userId)
+	if err != nil {
+		return nil, err
+	}
+	return profile, nil
 }

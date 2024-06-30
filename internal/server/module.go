@@ -49,4 +49,13 @@ func (m *moduleFactory) UsersModule() {
 	
 	router.Post("/signup", handler.SignUpCustomer)
 	router.Post("/signin", handler.SignIn)
+	router.Post("/refresh", handler.RefreshPassport)
+	router.Post("/signout", handler.SignOut)
+
+	// Initial 1 admin in DB (insert sql)
+	// Generate admin key
+	router.Get("/admin/secret", m.m.JwtAuth(), m.m.Authotize(2), handler.GenerateAdminToken)
+	router.Post("/signup-admin", handler.SignUpAdmin)
+
+	router.Get("/:user_id", m.m.JwtAuth(), m.m.ParamsCheck(), handler.GetUserProfile)
 }

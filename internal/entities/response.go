@@ -44,7 +44,7 @@ func (r *Response) Error(code int, tractId, msg string) IResponse {
 		Msg:     msg,
 	}
 	r.IsError = true
-	logger.InitLogger(r.Context, &r.ErrorRes, code).Print()
+	// logger.InitLogger(r.Context, &r.ErrorRes, code).Print()
 	return r
 }
 
