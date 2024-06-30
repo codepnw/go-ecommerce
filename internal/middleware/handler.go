@@ -7,6 +7,7 @@ import (
 	"github.com/codepnw/go-ecommerce/config"
 	"github.com/codepnw/go-ecommerce/internal/entities"
 	"github.com/codepnw/go-ecommerce/pkg/auth"
+	"github.com/codepnw/go-ecommerce/pkg/utils"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -18,6 +19,7 @@ const (
 	routerCheckErrCode middlewareHandlersErrCode = "middlware-001"
 	jwtAuthErrCode     middlewareHandlersErrCode = "middleware-002"
 	paramsCheckErrCode middlewareHandlersErrCode = "middleware-003"
+	authorizeErrCode   middlewareHandlersErrCode = "middleware-004"
 )
 
 type IMiddlewareHandler interface {
@@ -26,6 +28,7 @@ type IMiddlewareHandler interface {
 	Logger() fiber.Handler
 	JwtAuth() fiber.Handler
 	ParamsCheck() fiber.Handler
+	Authotize(expectRoleId ...int) fiber.Handler
 }
 
 type middlewareHandler struct {
@@ -111,5 +114,48 @@ func (h *middlewareHandler) ParamsCheck() fiber.Handler {
 			).Res()
 		}
 		return c.Next()
+	}
+}
+
+func (h *middlewareHandler) Authotize(expectRoleId ...int) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		userRoleId, ok := c.Locals("userRoleId").(int)
+		if !ok {
+			return entities.NewResponse(c).Error(
+				fiber.ErrUnauthorized.Code,
+				string(authorizeErrCode),
+				"user_id is not int type",
+			).Res()
+		}
+
+		// Find Role
+		roles, err := h.usecase.FindRole()
+		if err != nil {
+			return entities.NewResponse(c).Error(
+				fiber.StatusInternalServerError,
+				string(authorizeErrCode),
+				err.Error(),
+			).Res()
+		}
+
+		sum := 0
+		for _, v := range expectRoleId {
+			sum += v
+		}
+
+		expectedValueBinary := utils.BinaryConverter(sum, len(roles))
+		userValueBinary := utils.BinaryConverter(userRoleId, len(roles))
+
+		for i := range userValueBinary {
+			if userValueBinary[i] & expectedValueBinary[i] == 1 {
+				return c.Next()
+			}
+		}
+
+		return entities.NewResponse(c).Error(
+			fiber.ErrUnauthorized.Code,
+			string(authorizeErrCode), 
+			"no permission to access",
+		).Res()
 	}
 }

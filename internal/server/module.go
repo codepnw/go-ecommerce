@@ -54,7 +54,7 @@ func (m *moduleFactory) UsersModule() {
 
 	// Initial 1 admin in DB (insert sql)
 	// Generate admin key
-	router.Get("/secret", m.m.JwtAuth(), handler.GenerateAdminToken)
+	router.Get("/admin/secret", m.m.JwtAuth(), m.m.Authotize(2), handler.GenerateAdminToken)
 	router.Post("/signup-admin", handler.SignUpAdmin)
 
 	router.Get("/:user_id", m.m.JwtAuth(), m.m.ParamsCheck(), handler.GetUserProfile)
