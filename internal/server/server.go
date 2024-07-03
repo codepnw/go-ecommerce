@@ -41,7 +41,8 @@ func (s *server) Start() {
 
 	module.MonitorModule()
 	module.UsersModule()
-
+	module.AppinfoModule()
+ 
 	log.Printf("server is starting on :8080")
 	s.app.Listen(":8080")
 }

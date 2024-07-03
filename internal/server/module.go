@@ -1,6 +1,9 @@
 package server
 
 import (
+	"github.com/codepnw/go-ecommerce/internal/appinfo/appinfoHandlers"
+	"github.com/codepnw/go-ecommerce/internal/appinfo/appinfoRepositories"
+	"github.com/codepnw/go-ecommerce/internal/appinfo/appinfoUsecases"
 	"github.com/codepnw/go-ecommerce/internal/middleware"
 	"github.com/codepnw/go-ecommerce/internal/monitor"
 	"github.com/codepnw/go-ecommerce/internal/users/usersHandlers"
@@ -12,6 +15,7 @@ import (
 type IModuleFactory interface {
 	MonitorModule()
 	UsersModule()
+	AppinfoModule()
 }
 
 type moduleFactory struct {
@@ -46,7 +50,7 @@ func (m *moduleFactory) UsersModule() {
 	handler := usersHandlers.UsersHandler(m.s.cfg, usecase)
 
 	router := m.r.Group("/users")
-	
+
 	router.Post("/signup", handler.SignUpCustomer)
 	router.Post("/signin", handler.SignIn)
 	router.Post("/refresh", handler.RefreshPassport)
@@ -55,7 +59,17 @@ func (m *moduleFactory) UsersModule() {
 	// Initial 1 admin in DB (insert sql)
 	// Generate admin key
 	router.Get("/admin/secret", m.m.JwtAuth(), m.m.Authotize(2), handler.GenerateAdminToken)
-	router.Post("/signup-admin", handler.SignUpAdmin)
+	router.Post("/signup-admin", m.m.JwtAuth(), m.m.Authotize(2), handler.SignUpAdmin)
 
 	router.Get("/:user_id", m.m.JwtAuth(), m.m.ParamsCheck(), handler.GetUserProfile)
+}
+
+func (m *moduleFactory) AppinfoModule() {
+	repo := appinfoRepositories.AppinfoRepository(m.s.db.Get())
+	usecase := appinfoUsecases.AppinfoUsecase(repo)
+	handler := appinfoHandlers.AppinfoHandler(m.s.cfg, usecase)
+
+	router := m.r.Group("/appinfo")
+
+	router.Get("/apikey", m.m.JwtAuth(), m.m.Authotize(1), handler.GenerateApiKey)
 }
