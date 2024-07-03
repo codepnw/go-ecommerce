@@ -3,8 +3,6 @@ package middleware
 import (
 	"database/sql"
 	"fmt"
-
-	"github.com/lib/pq"
 )
 
 type IMiddlewareRepository interface {
@@ -44,15 +42,22 @@ func (r *middlewareRepository) FindRole() ([]*Role, error) {
 	`
 	roles := make([]*Role, 0)
 
-	rows, err := r.db.Query(query, pq.Array(&roles))
+	rows, err := r.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("role is empty")
 	}
+	defer rows.Close()
 
 	for rows.Next() {
-		if err := rows.Scan(&roles); err != nil {
-			return nil, fmt.Errorf("scan role error")
+		var role Role
+		if err := rows.Scan(&role.Id, &role.Title); err != nil {
+			return nil, fmt.Errorf("scan roles error")
 		}
+		roles = append(roles, &role)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows error: %v", err)
 	}
 
 	return roles, nil

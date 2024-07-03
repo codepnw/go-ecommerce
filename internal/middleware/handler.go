@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/codepnw/go-ecommerce/config"
@@ -76,7 +75,6 @@ func (h *middlewareHandler) Logger() fiber.Handler {
 func (h *middlewareHandler) JwtAuth() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		token := strings.TrimPrefix(c.Get("Authorization"), "Bearer ")
-		fmt.Println(token)
 
 		result, err := auth.ParseToken(h.cfg.Jwt(), token)
 		if err != nil {
@@ -147,14 +145,14 @@ func (h *middlewareHandler) Authotize(expectRoleId ...int) fiber.Handler {
 		userValueBinary := utils.BinaryConverter(userRoleId, len(roles))
 
 		for i := range userValueBinary {
-			if userValueBinary[i] & expectedValueBinary[i] == 1 {
+			if userValueBinary[i]&expectedValueBinary[i] == 1 {
 				return c.Next()
 			}
 		}
 
 		return entities.NewResponse(c).Error(
 			fiber.ErrUnauthorized.Code,
-			string(authorizeErrCode), 
+			string(authorizeErrCode),
 			"no permission to access",
 		).Res()
 	}
