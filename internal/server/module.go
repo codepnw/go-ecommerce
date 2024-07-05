@@ -51,10 +51,10 @@ func (m *moduleFactory) UsersModule() {
 
 	router := m.r.Group("/users")
 
-	router.Post("/signup", handler.SignUpCustomer)
-	router.Post("/signin", handler.SignIn)
-	router.Post("/refresh", handler.RefreshPassport)
-	router.Post("/signout", handler.SignOut)
+	router.Post("/signup", m.m.ApiKeyAuth(), handler.SignUpCustomer)
+	router.Post("/signin", m.m.ApiKeyAuth(), handler.SignIn)
+	router.Post("/refresh", m.m.ApiKeyAuth(), handler.RefreshPassport)
+	router.Post("/signout", m.m.ApiKeyAuth(), handler.SignOut)
 
 	// Initial 1 admin in DB (insert sql)
 	// Generate admin key
@@ -71,5 +71,5 @@ func (m *moduleFactory) AppinfoModule() {
 
 	router := m.r.Group("/appinfo")
 
-	router.Get("/apikey", m.m.JwtAuth(), m.m.Authotize(1), handler.GenerateApiKey)
+	router.Get("/apikey", m.m.JwtAuth(), m.m.Authotize(2), handler.GenerateApiKey)
 }
