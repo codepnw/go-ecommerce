@@ -4,6 +4,8 @@ import (
 	"github.com/codepnw/go-ecommerce/internal/appinfo/appinfoHandlers"
 	"github.com/codepnw/go-ecommerce/internal/appinfo/appinfoRepositories"
 	"github.com/codepnw/go-ecommerce/internal/appinfo/appinfoUsecases"
+	"github.com/codepnw/go-ecommerce/internal/files/filesHandlers"
+	"github.com/codepnw/go-ecommerce/internal/files/filesUsecases"
 	"github.com/codepnw/go-ecommerce/internal/middleware"
 	"github.com/codepnw/go-ecommerce/internal/monitor"
 	"github.com/codepnw/go-ecommerce/internal/users/usersHandlers"
@@ -16,6 +18,7 @@ type IModuleFactory interface {
 	MonitorModule()
 	UsersModule()
 	AppinfoModule()
+	FileModule() 
 }
 
 type moduleFactory struct {
@@ -75,4 +78,14 @@ func (m *moduleFactory) AppinfoModule() {
 	router.Get("/categories", m.m.ApiKeyAuth(), handler.FindCategory)
 	router.Post("/categories", m.m.JwtAuth(), m.m.Authotize(2), handler.InsertCategory)
 	router.Delete("/categories/:id", m.m.JwtAuth(), m.m.Authotize(2), handler.DeleteCategory)
+}
+
+func (m *moduleFactory) FileModule() {
+	usecase := filesUsecases.FilesUsecase(m.s.cfg)
+	handler := filesHandlers.FilesHandler(m.s.cfg, usecase)
+
+	router := m.r.Group("/files")
+
+	router.Post("/upload", m.m.JwtAuth(), m.m.Authotize(2), handler.UploadFiles)
+	router.Delete("/delete", m.m.JwtAuth(), m.m.Authotize(2), handler.DeleteFile)
 }
