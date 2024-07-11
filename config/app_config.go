@@ -6,6 +6,8 @@ import (
 )
 
 type AppConfig interface {
+	Host() string
+	Port() int
 	Url() string
 	Name() string
 	Version() string
@@ -30,6 +32,8 @@ func (c *config) App() AppConfig {
 	return c.app
 }
 
+func (a *app) Host() string                { return a.host }
+func (a *app) Port() int                   { return a.port }
 func (a *app) Url() string                 { return fmt.Sprintf("%s:%d", a.host, a.port) } // host:port
 func (a *app) Name() string                { return a.name }
 func (a *app) Version() string             { return a.version }
