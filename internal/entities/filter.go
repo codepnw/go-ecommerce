@@ -4,7 +4,7 @@ type PaginationReq struct {
 	Page      int `query:"page"`
 	Limit     int `query:"limit"`
 	TotalPage int `query:"total_page" json:"total_page"`
-	TotalItem int `query:"total_item" json:"totla_item"`
+	TotalItem int `query:"total_item" json:"total_item"`
 }
 
 type SortReq struct {
