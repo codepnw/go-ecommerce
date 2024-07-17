@@ -1,6 +1,7 @@
 package productRepositories
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -15,6 +16,9 @@ import (
 type IProductRepository interface {
 	FindOneProduct(productId string) (*products.Product, error)
 	FindAllProducts(req *products.ProductFilter) ([]*products.Product, int)
+	InsertProduct(req *products.Product) (*products.Product, error)
+	UpdateProduct(req *products.Product) (*products.Product, error)
+	DeleteProduct(productId string) error
 }
 
 type productRepository struct {
@@ -99,4 +103,46 @@ func (r *productRepository) FindAllProducts(req *products.ProductFilter) ([]*pro
 	count := engineer.CountProduct().Count()
 
 	return result, count
+}
+
+func (r *productRepository) InsertProduct(req *products.Product) (*products.Product, error) {
+	builer := productPatterns.InsertProductBuilder(r.db, req)
+
+	productId, err := productPatterns.InsertProductEngineer(builer).InsertProduct()
+	if err != nil {
+		return nil, err
+	}
+
+	product, err := r.FindOneProduct(productId)
+	if err != nil {
+		return nil, err
+	}
+
+	return product, nil
+}
+
+func (r *productRepository) UpdateProduct(req *products.Product) (*products.Product, error) {
+	builder := productPatterns.UpdateProductBuilder(r.db, req, r.filesUsecase)
+	engineer := productPatterns.UpdateProductEngineer(builder)
+
+	if err := engineer.UpdateProduct(); err != nil {
+		return nil, err
+	}
+
+	product, err := r.FindOneProduct(req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return product, nil
+}
+
+func (r *productRepository) DeleteProduct(productId string) error {
+	query := `DELETE "products" WHERE "id" = $1;`
+
+	if _, err := r.db.ExecContext(context.Background(), query, productId); err != nil {
+		return fmt.Errorf("delete product failed: %v", err)
+	}
+
+	return nil
 }
