@@ -18,12 +18,14 @@ const (
 	findOneProductErrCode  productHandlerErrCode = "products-001"
 	findAllProductsErrCode productHandlerErrCode = "products-002"
 	insertProductsErrCode  productHandlerErrCode = "products-003"
+	updateProductsErrCode  productHandlerErrCode = "products-004"
 )
 
 type IProductHandler interface {
 	FindOneProduct(c *fiber.Ctx) error
 	FindAllProducts(c *fiber.Ctx) error
 	InsertProduct(c *fiber.Ctx) error
+	UpdateProduct(c *fiber.Ctx) error
 }
 
 type productHandler struct {
@@ -92,7 +94,7 @@ func (h *productHandler) FindAllProducts(c *fiber.Ctx) error {
 func (h *productHandler) InsertProduct(c *fiber.Ctx) error {
 	req := &products.Product{
 		Category: &appinfo.Category{},
-		Images: make([]*entities.Image, 0),
+		Images:   make([]*entities.Image, 0),
 	}
 
 	if err := c.BodyParser(req); err != nil {
@@ -111,7 +113,7 @@ func (h *productHandler) InsertProduct(c *fiber.Ctx) error {
 		).Res()
 	}
 
-	product, err := h.productUsecase.InsertProduct(req) 
+	product, err := h.productUsecase.InsertProduct(req)
 	if err != nil {
 		return entities.NewResponse(c).Error(
 			fiber.ErrInternalServerError.Code,
@@ -121,4 +123,34 @@ func (h *productHandler) InsertProduct(c *fiber.Ctx) error {
 	}
 
 	return entities.NewResponse(c).Success(fiber.StatusCreated, product).Res()
+}
+
+func (h *productHandler) UpdateProduct(c *fiber.Ctx) error {
+	productId := strings.Trim(c.Params("product_id"), " ")
+
+	req := &products.Product{
+		Images: make([]*entities.Image, 0),
+		Category: &appinfo.Category{},
+	}
+
+	if err := c.BodyParser(req); err != nil {
+		return entities.NewResponse(c).Error(
+			fiber.ErrBadRequest.Code,
+			string(updateProductsErrCode),
+			err.Error(),
+		).Res()
+	}
+
+	req.Id = productId
+
+	product, err := h.productUsecase.UpdateProduct(req)
+	if err != nil {
+		return entities.NewResponse(c).Error(
+			fiber.ErrInternalServerError.Code,
+			string(updateProductsErrCode),
+			err.Error(),
+		).Res()
+	}
+
+	return entities.NewResponse(c).Success(fiber.StatusOK, product).Res()
 }
