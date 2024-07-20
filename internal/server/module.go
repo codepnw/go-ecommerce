@@ -8,6 +8,9 @@ import (
 	"github.com/codepnw/go-ecommerce/internal/files/filesUsecases"
 	"github.com/codepnw/go-ecommerce/internal/middleware"
 	"github.com/codepnw/go-ecommerce/internal/monitor"
+	"github.com/codepnw/go-ecommerce/internal/orders/orderHandlers"
+	"github.com/codepnw/go-ecommerce/internal/orders/orderRepositories"
+	"github.com/codepnw/go-ecommerce/internal/orders/orderUsecases"
 	"github.com/codepnw/go-ecommerce/internal/products/productHandlers"
 	"github.com/codepnw/go-ecommerce/internal/products/productRepositories"
 	"github.com/codepnw/go-ecommerce/internal/products/productUsecases"
@@ -23,6 +26,7 @@ type IModuleFactory interface {
 	AppinfoModule()
 	FileModule()
 	ProductModule()
+	OrderModule()
 }
 
 type moduleFactory struct {
@@ -107,4 +111,18 @@ func (m *moduleFactory) ProductModule() {
 	router.Get("/:product_id", m.m.ApiKeyAuth(), handler.FindOneProduct)
 	router.Patch("/:product_id", m.m.JwtAuth(), m.m.Authotize(2), handler.UpdateProduct)
 	router.Delete("/:product_id", m.m.JwtAuth(), m.m.Authotize(2), handler.DeleteProduct)
+}
+
+func (m *moduleFactory) OrderModule() {
+	fileUsecase := filesUsecases.FilesUsecase(m.s.cfg)
+	productRepo := productRepositories.ProductRepository(m.s.db.Get(), m.s.cfg, fileUsecase)
+
+	orderRepo := orderRepositories.OrderRepository(m.s.db.Get())
+	usecase := orderUsecases.OrderUsecase(orderRepo, productRepo)
+	handler := orderHandlers.OrderHandler(m.s.cfg, usecase)
+
+	router := m.r.Group("/orders")
+
+	_ = handler
+	_ = router
 }
