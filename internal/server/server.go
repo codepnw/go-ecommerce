@@ -44,6 +44,7 @@ func (s *server) Start() {
 	module.AppinfoModule()
 	module.FileModule()
 	module.ProductModule()
+	module.OrderModule()
  
 	log.Printf("server is starting on :8080")
 	s.app.Listen(":8080")
