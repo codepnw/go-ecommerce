@@ -6,10 +6,12 @@ import (
 	"fmt"
 
 	"github.com/codepnw/go-ecommerce/internal/orders"
+	"github.com/codepnw/go-ecommerce/internal/orders/orderPatterns"
 )
 
 type IOrderRepository interface{
 	FindOneOrder(orderId string) (*orders.Order, error)
+	FindAllOrders(req *orders.OrderFilter) ([]*orders.Order, int)
 }
 
 type orderRepository struct {
@@ -29,6 +31,7 @@ func (r *orderRepository) FindOneOrder(orderId string) (*orders.Order, error) {
 				"o"."id",
 				"o"."user_id",
 				"o"."transfer_slip",
+				"o"."status,
 				(
 					SELECT
 						array_to_json(array_agg("pt"))
@@ -72,4 +75,11 @@ func (r *orderRepository) FindOneOrder(orderId string) (*orders.Order, error) {
 	}
 
 	return orderData, nil
+}
+
+func (r *orderRepository) FindAllOrders(req *orders.OrderFilter) ([]*orders.Order, int) {
+	builder := orderPatterns.FindOrderBuilder(r.db, req)
+	engineer := orderPatterns.FindOrderEngineer(builder)
+	fmt.Printf("data: %v", engineer.FindOrders())
+	return engineer.FindOrders(), engineer.CountOrders()
 }
