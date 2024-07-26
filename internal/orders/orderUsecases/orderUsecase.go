@@ -1,6 +1,7 @@
 package orderUsecases
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/codepnw/go-ecommerce/internal/entities"
@@ -12,6 +13,7 @@ import (
 type IOrderUsecase interface {
 	FindOneOrder(orderId string) (*orders.Order, error)
 	FindAllOrders(req *orders.OrderFilter) *entities.PaginateRes
+	InsertOrder(req *orders.Order) (*orders.Order, error)
 }
 
 type orderUsecase struct {
@@ -43,4 +45,34 @@ func (u *orderUsecase) FindAllOrders(req *orders.OrderFilter) *entities.Paginate
 		TotalItem: count,
 		TotalPage: int(math.Ceil(float64(count) / float64(req.Limit))),
 	}
+}
+
+func (u *orderUsecase) InsertOrder(req *orders.Order) (*orders.Order, error) {
+	// Check product is exists
+	for i := range req.Products {
+		if req.Products[i].Product == nil {
+			return nil, fmt.Errorf("product is nil")
+		}
+
+		prod, err := u.productRepo.FindOneProduct(req.Products[i].Product.Id)
+		if err != nil {
+			return nil, err
+		}
+
+		// Set Price
+		req.TotalPaid += req.Products[i].Product.Price * float64(req.Products[i].Qty)
+		req.Products[i].Product = prod
+	}
+
+	orderId, err := u.orderRepo.InsertOrder(req)
+	if err != nil {
+		return nil, err
+	}
+
+	order, err := u.orderRepo.FindOneOrder(orderId)
+	if err != nil {
+		return nil, err
+	}
+
+	return order, nil
 }

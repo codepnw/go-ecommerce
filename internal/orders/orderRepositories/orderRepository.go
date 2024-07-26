@@ -9,9 +9,10 @@ import (
 	"github.com/codepnw/go-ecommerce/internal/orders/orderPatterns"
 )
 
-type IOrderRepository interface{
+type IOrderRepository interface {
 	FindOneOrder(orderId string) (*orders.Order, error)
 	FindAllOrders(req *orders.OrderFilter) ([]*orders.Order, int)
+	InsertOrder(req *orders.Order) (string, error)
 }
 
 type orderRepository struct {
@@ -61,11 +62,11 @@ func (r *orderRepository) FindOneOrder(orderId string) (*orders.Order, error) {
 
 	orderData := &orders.Order{
 		TransferSlip: &orders.TransferSlip{},
-		Products: make([]*orders.ProductsOrder, 0),
+		Products:     make([]*orders.ProductsOrder, 0),
 	}
 
 	raw := make([]byte, 0)
-	
+
 	if err := r.db.QueryRow(query, orderId).Scan(&raw); err != nil {
 		return nil, fmt.Errorf("get order failed: %v", err)
 	}
@@ -82,4 +83,13 @@ func (r *orderRepository) FindAllOrders(req *orders.OrderFilter) ([]*orders.Orde
 	engineer := orderPatterns.FindOrderEngineer(builder)
 	fmt.Printf("data: %v", engineer.FindOrders())
 	return engineer.FindOrders(), engineer.CountOrders()
+}
+
+func (r *orderRepository) InsertOrder(req *orders.Order) (string, error) {
+	builder := orderPatterns.InsertOrderBuilder(r.db, req)
+	orderId, err := orderPatterns.InsertOrderEngineer(builder).InsertOrder()
+	if err != nil {
+		return "", err
+	}
+	return orderId, nil
 }
