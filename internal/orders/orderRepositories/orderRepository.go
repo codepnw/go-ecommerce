@@ -1,17 +1,21 @@
 package orderRepositories
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/codepnw/go-ecommerce/internal/orders"
 	"github.com/codepnw/go-ecommerce/internal/orders/orderPatterns"
 )
 
-type IOrderRepository interface{
+type IOrderRepository interface {
 	FindOneOrder(orderId string) (*orders.Order, error)
 	FindAllOrders(req *orders.OrderFilter) ([]*orders.Order, int)
+	InsertOrder(req *orders.Order) (string, error)
+	UpdateOrder(req *orders.Order) error
 }
 
 type orderRepository struct {
@@ -61,11 +65,11 @@ func (r *orderRepository) FindOneOrder(orderId string) (*orders.Order, error) {
 
 	orderData := &orders.Order{
 		TransferSlip: &orders.TransferSlip{},
-		Products: make([]*orders.ProductsOrder, 0),
+		Products:     make([]*orders.ProductsOrder, 0),
 	}
 
 	raw := make([]byte, 0)
-	
+
 	if err := r.db.QueryRow(query, orderId).Scan(&raw); err != nil {
 		return nil, fmt.Errorf("get order failed: %v", err)
 	}
@@ -82,4 +86,59 @@ func (r *orderRepository) FindAllOrders(req *orders.OrderFilter) ([]*orders.Orde
 	engineer := orderPatterns.FindOrderEngineer(builder)
 	fmt.Printf("data: %v", engineer.FindOrders())
 	return engineer.FindOrders(), engineer.CountOrders()
+}
+
+func (r *orderRepository) InsertOrder(req *orders.Order) (string, error) {
+	builder := orderPatterns.InsertOrderBuilder(r.db, req)
+	orderId, err := orderPatterns.InsertOrderEngineer(builder).InsertOrder()
+	if err != nil {
+		return "", err
+	}
+	return orderId, nil
+}
+
+func (r *orderRepository) UpdateOrder(req *orders.Order) error {
+	query := `UPDATE "orders" SET`
+	
+	queryWhereStack := make([]string, 0)
+	values := make([]any, 0)
+	lastIndex := 1
+
+	if req.Status != "" {
+		values = append(values, req.Status)
+		queryWhereStack = append(
+			queryWhereStack, 
+			fmt.Sprintf(`"status" = $%d?`, lastIndex),
+		)
+		lastIndex++
+	}
+
+	if req.TransferSlip != nil {
+		values = append(values, req.TransferSlip)
+		queryWhereStack = append(
+			queryWhereStack, 
+			fmt.Sprintf(`"transfer_slip" = $%d?`, lastIndex),
+		)
+		lastIndex++
+	}
+
+	values = append(values, req.Id)
+
+	queryClose := fmt.Sprintf(`WHERE "id" = $%d;`, lastIndex)
+
+	for i := range queryWhereStack {
+		if i != len(queryWhereStack) - 1 {
+			query += strings.Replace(queryWhereStack[i], "?", ",", 1)
+		} else {
+			query += strings.Replace(queryWhereStack[i], "?", "", 1)
+		}
+	}
+
+	query += queryClose
+
+	if _, err := r.db.ExecContext(context.Background(), query, values...); err != nil {
+		return fmt.Errorf("update order failed: %v", err)
+	}
+
+	return nil
 }
