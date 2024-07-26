@@ -14,6 +14,7 @@ type IOrderUsecase interface {
 	FindOneOrder(orderId string) (*orders.Order, error)
 	FindAllOrders(req *orders.OrderFilter) *entities.PaginateRes
 	InsertOrder(req *orders.Order) (*orders.Order, error)
+	UpdateOrder(req *orders.Order) (*orders.Order, error)
 }
 
 type orderUsecase struct {
@@ -70,6 +71,19 @@ func (u *orderUsecase) InsertOrder(req *orders.Order) (*orders.Order, error) {
 	}
 
 	order, err := u.orderRepo.FindOneOrder(orderId)
+	if err != nil {
+		return nil, err
+	}
+
+	return order, nil
+}
+
+func (u *orderUsecase) UpdateOrder(req *orders.Order) (*orders.Order, error) {
+	if err := u.orderRepo.UpdateOrder(req); err != nil {
+		return nil, err
+	}
+
+	order, err := u.orderRepo.FindOneOrder(req.Id)
 	if err != nil {
 		return nil, err
 	}
